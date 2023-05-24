@@ -1,0 +1,687 @@
+#include<SFML\Graphics.hpp>
+#include<SFML/Audio.hpp>
+#include<SFML/System.hpp>
+#include<SFML/Window.hpp>
+#include<iostream>
+#include<time.h>
+#include<fstream>
+#include<chrono>
+#include<thread>
+#include<vector>
+
+
+using namespace std;
+using namespace sf;
+
+
+vector<string> bullet_missed{ "Ha, Dodged Again" , "Umm SharpShooter!!!" , "Fabulous!!!" , "Marvelous!!!" , "Nailed It !!!" };
+vector<string> bullet_hit{ "Bleh Bleh Bleh" , "aaaaahhhhh" , "Bruhhhhhh" , "Oi Oi Oi Railgun..." , "Sayonara..." };
+
+
+/*
+
+
+1. textures : bullet , help_desk , start , help , quit
+5. background decding (ending)
+6. game title
+7. laughing and crying text comments from asteroids (not compulsory)
+
+
+*/
+
+
+
+
+int main()
+{
+	RenderWindow window(VideoMode(1250, 600), "The Game");
+	window.setFramerateLimit(60);
+	Event event;
+
+	time_t t;
+	t = time(0);
+	srand(t);
+
+
+	//Texture
+	Texture tex_player;
+	if (tex_player.loadFromFile("Data/tex_player.png") == false) return -1;
+
+	Texture tex_blast_effect;
+	if (tex_blast_effect.loadFromFile("Data/blast2.png") == false) return -1;
+
+	Texture tex_asteroid1;
+	if (tex_asteroid1.loadFromFile("Data/asteroid_texture1.png") == false) return -1;
+
+	Texture tex_asteroid2;
+	if (tex_asteroid1.loadFromFile("Data/asteroid_texture2.png") == false) return -1;
+
+	Texture tex_asteroid3;
+	if (tex_asteroid1.loadFromFile("Data/asteroid_texture3.png") == false) return -1;
+
+	Texture tex_asteroid4;
+	if (tex_asteroid1.loadFromFile("Data/asteroid_texture4.png") == false) return -1;
+
+	Texture tex_asteroid5;
+	if (tex_asteroid1.loadFromFile("Data/asteroid_texture5.png") == false) return -1;
+
+	Texture tex_asteroid6;
+	if (tex_asteroid1.loadFromFile("Data/asteroid_texture6.png") == false) return -1;
+
+	//Texture tex_bullet;
+	//if (tex_bullet.loadFromFile("Data/tex_bullet.png") == false) return -1;
+
+	Texture tex_background;
+
+	Texture asteroid_texture;
+
+
+
+
+
+
+	//Font
+	Font font;
+	if (font.loadFromFile("Data/CloisterBlack.ttf") == false) return -1;
+
+	Font font2;
+	if (font2.loadFromFile("Data/TaylorSans-Bold.ttf") == false) return -1;
+
+
+	//Text
+	Text text;
+	text.setFont(font);
+	text.setPosition(450, 0);
+	text.setString("Level : 1");
+	text.setStyle(Text::Underlined);
+
+	Text change_level;
+	change_level.setFont(font);
+	change_level.setCharacterSize(100);
+	change_level.setPosition(400, 250);
+
+	Text game_over;
+	game_over.setFont(font);
+	game_over.setPosition(100, 100);
+	game_over.setCharacterSize(250);
+	game_over.setString("Game Over");
+
+	Text scorecard;
+	scorecard.setFont(font);
+	scorecard.setPosition(650, 0);
+	scorecard.setString("Score : 100");
+	scorecard.setStyle(Text::Underlined);
+
+	Text new_high_score_achieved;
+	new_high_score_achieved.setFont(font);
+	new_high_score_achieved.setString("New High Score Achieved");
+	new_high_score_achieved.setPosition(800, 500);
+
+	Text play_text;
+	play_text.setFont(font2);
+	play_text.setString("PLAY");
+	play_text.setFillColor(Color::White);
+	play_text.setPosition(583, 300);
+
+	Text help_text;
+	help_text.setFont(font2);
+	help_text.setString("HELP");
+	help_text.setFillColor(Color::White);
+	help_text.setPosition(583, 350);
+
+	Text quit_text;
+	quit_text.setFont(font2);
+	quit_text.setString("QUIT");
+	quit_text.setFillColor(Color::White);
+	quit_text.setPosition(583, 400);
+
+	Text textbox;
+	textbox.setFont(font2);
+	textbox.setFillColor(Color::Green);
+
+
+
+
+	//Audio
+	SoundBuffer buff_shoot; if (buff_shoot.loadFromFile("Data/shoot.wav") == false) return -1;
+	SoundBuffer buff_blast; if (buff_blast.loadFromFile("Data/blast.wav") == false) return -1;
+	SoundBuffer buff_main; if (buff_main.loadFromFile("Data/game_playing_music.wav") == false) return -1;
+	SoundBuffer buff_level_up; if (buff_level_up.loadFromFile("Data/level_completed.wav") == false) return -1;
+	SoundBuffer buff_game_over; if (buff_game_over.loadFromFile("Data/game_over.wav") == false) return -1;
+	SoundBuffer buff_all_levels_cleared; if (buff_all_levels_cleared.loadFromFile("Data/all_levels_cleared.wav") == false) return -1;
+	SoundBuffer buff_playing_game; if (buff_playing_game.loadFromFile("Data/main.wav") == false) return -1;
+
+	Sound shoot; shoot.setBuffer(buff_shoot);
+	Sound blast; blast.setBuffer(buff_blast);
+	Sound main_music; main_music.setBuffer(buff_main);
+	Sound game_over_music; game_over_music.setBuffer(buff_game_over);
+	Sound level_up_sound; level_up_sound.setBuffer(buff_level_up);
+	Sound all_levels_cleared_music; all_levels_cleared_music.setBuffer(buff_all_levels_cleared);
+	Sound playing_game_music; playing_game_music.setBuffer(buff_playing_game);
+
+
+
+
+	//Shapes
+	RectangleShape player;
+	player.setSize(Vector2f(50, 50));
+	player.setOrigin(0, 25);
+	player.setPosition(0, 300);
+	player.setTexture(&tex_player);
+
+	RectangleShape bullet;
+	bullet.setSize(Vector2f(15, 5));
+	bullet.setOrigin(15, 2.5);
+	//bullet.setTexture(&tex_bullet);
+
+	RectangleShape target;
+	target.setSize(Vector2f(50, 50));
+	target.setPosition(1200, rand() % 550);
+	target.setTexture(&tex_asteroid1);
+	target.setFillColor(Color::Red);
+
+
+	RectangleShape line;
+	line.setSize(Vector2f(1, 600));
+	line.setPosition(50, 0);
+
+	RectangleShape blast_effect;
+	blast_effect.setSize(Vector2f(75, 75));
+	blast_effect.setTexture(&tex_blast_effect);
+
+	RectangleShape menu_play;
+	menu_play.setSize(Vector2f(200, 35));
+	menu_play.setPosition(525, 300);
+	menu_play.setFillColor(Color::Black);
+
+	RectangleShape menu_help;
+	menu_help.setSize(Vector2f(200, 35));
+	menu_help.setPosition(525, 350);
+	menu_help.setFillColor(Color::Black);
+
+	RectangleShape menu_quit;
+	menu_quit.setSize(Vector2f(200, 35));
+	menu_quit.setPosition(525, 400);
+	menu_quit.setFillColor(Color::Black);
+
+	RectangleShape background;
+	background.setSize(Vector2f(1250, 600));
+
+
+
+	//Variables
+	int random;
+	int velocity_player = 0;
+	int count = 0;
+	int score = 100;
+	int level = 1;
+	int x_velocity_target = -1;
+	int y_velocity_target = 3;
+	int high_score;
+	int highest_level;
+
+	Int64 high_score_time;
+
+	bool move_up = false;
+	bool move_down = false;
+	bool shoot_bullet = false;
+	bool shoot_allowed = true;
+	bool shooted = false;
+	bool game_finished = false;
+	bool bullet_on_screen = false;
+	bool rebound = true;
+	bool upper_rebound = true;
+	bool lower_rebound = false;
+	bool all_levels_clear = false;
+	bool new_high_score = false;
+	bool quit = false;
+	bool options = false;
+	bool display_textbox = false;
+	bool remove_textbox = false;
+
+
+
+
+
+
+	if (tex_background.loadFromFile("Data/main_menu_background.jpg") == false) return -1;
+	background.setTexture(&tex_background);
+	main_music.setLoop(true);
+	main_music.play();
+	while (window.isOpen())
+	{
+		//cout << Mouse::getPosition(window).x << " " << Mouse::getPosition(window).y << endl;
+
+		while (window.pollEvent(event))
+		{
+			if (event.type == Event::Closed)
+			{
+				window.close();
+				return 0;
+			}
+
+
+			if (event.type == Event::MouseButtonPressed && event.key.code == Mouse::Left) options = true;
+		}
+
+
+		if (options)
+		{
+			options = false;
+			if (Mouse::getPosition().x <= 725 && Mouse::getPosition().x >= 525)
+			{
+				if (Mouse::getPosition(window).y <= 335 && Mouse::getPosition(window).y >= 300)
+				{
+					main_music.stop();
+					break;
+				}
+				else if (Mouse::getPosition(window).y <= 385 && Mouse::getPosition(window).y >= 350)
+				{
+					RectangleShape back_to_menu;
+					back_to_menu.setFillColor(Color::Black);
+					back_to_menu.setSize(Vector2f(100, 650));
+
+					RectangleShape brief_of_game;
+					brief_of_game.setSize(Vector2f(1150, 650));
+					brief_of_game.setPosition(100, 0);
+
+					Text to_menu;
+					to_menu.setFont(font2);
+					to_menu.rotate(270.0f);
+					to_menu.setPosition(25,500);
+					to_menu.setCharacterSize(50);
+					to_menu.setString("BACK  TO  MENU");
+
+					sf::Text game_brief;
+					game_brief.setString(" Scientists have discovered that few asteroid are heading towards earth and have to be stopped \n before they eneter the atmosphere of the earth. you are the commander of the railgun , which is \n created to destroy those asteroids. You Need to destroy all the asteroids before it reaches the \n earth atmosphere. \n\n Movement :- \n w -> Move Up \n s -> Move Down \n Mouse Right Click -> Shoot The Bullet \n Mouse Left Click -> Stop The Comments from the asteroids \n\n Score System :- \n Everytime you shoot a bullet 10 * current level will be subtarcted from the current score. \n Everytime you hit the target 100 * current level will be added to the current score. \n\n New High Score :- \n Levels are the primary way to check the new high score followed by the score. \n In case of equal levels and scores , time will be considered to decide the new high score.");
+					game_brief.setFont(font2);
+					game_brief.setCharacterSize(25);
+					game_brief.setPosition(100,0);
+					game_brief.setFillColor(Color(30,30,30));
+
+					Texture tex_old_paper; if (tex_old_paper.loadFromFile("Data/tex_old_paper.jpg") == false) return -1;
+					brief_of_game.setTexture(&tex_old_paper);
+
+
+					bool back_menu = false;
+
+					while (window.isOpen())
+					{
+						while (window.pollEvent(event))
+						{
+							if (event.type == Event::Closed) return true;
+							if (event.type == Event::MouseButtonReleased && (event.key.code == Mouse::Left || event.key.code == Mouse::Right))
+							{
+								if (Mouse::getPosition(window).y <= 600 && Mouse::getPosition(window).y >= 0 && Mouse::getPosition(window).x >= 0 && Mouse::getPosition(window).x <= 100)
+								{
+									back_menu = true;
+								}
+
+							}
+						}
+
+						if (back_menu) break;
+
+						window.clear();
+
+						window.draw(back_to_menu);
+						window.draw(brief_of_game);
+						window.draw(to_menu);
+						window.draw(game_brief);
+
+						window.display();
+					}
+
+
+
+				}
+				else if (Mouse::getPosition(window).y <= 435 && Mouse::getPosition(window).y >= 400) return 0;
+			}
+		}
+
+
+
+
+		window.clear();
+
+		window.draw(background);
+		window.draw(menu_play);
+		window.draw(play_text);
+		window.draw(menu_help);
+		window.draw(help_text);
+		window.draw(menu_quit);
+		window.draw(quit_text);
+
+		window.display();
+	}
+
+
+
+	change_level.setString("LEVEL : 1");
+	window.clear();
+	window.draw(change_level);
+	window.display();
+	this_thread::sleep_for(chrono::milliseconds(2000));
+
+
+	playing_game_music.setLoop(true);
+	playing_game_music.play();
+
+
+	Clock clock;
+	clock.restart();
+
+
+	if (tex_background.loadFromFile("Data/main_game_back.jpg") == false) return -1;
+	background.setTexture(&tex_background);
+	while (window.isOpen())
+	{
+		if (shooted) count = (count + 1) % 90;
+		if (count == 0)
+		{
+			shoot_allowed = true;
+			shooted = false;
+		}
+
+		if (rebound)
+		{
+			rebound = false;
+			if (upper_rebound)
+			{
+				//target.setOrigin(25,50);
+				random = (rand() % 550) + target.getPosition().y;
+				if (random > 550) random = 550;
+				lower_rebound = true;
+				upper_rebound = false;
+			}
+			else
+			{
+				//target.setOrigin(25, 0);
+				random = target.getPosition().y;
+				random = rand() % random;
+				upper_rebound = true;
+				lower_rebound = false;
+			}
+		}
+
+		//VENT
+		while (window.pollEvent(event))
+		{
+			if (event.type == Event::Closed)
+			{
+				return 0;
+			}
+
+			if (event.type == Event::KeyPressed && event.key.code == Keyboard::W) move_up = true;
+			if (event.type == Event::KeyPressed && event.key.code == Keyboard::S) move_down = true;
+
+			if (event.type == Event::KeyReleased && event.key.code == Keyboard::W) move_up = false;
+			if (event.type == Event::KeyReleased && event.key.code == Keyboard::S) move_down = false;
+
+			if (event.type == Event::MouseButtonPressed && event.key.code == Mouse::Right && shoot_allowed)
+			{
+				shoot_bullet = true;
+				shoot_allowed = false;
+				shooted = true;
+			}
+
+			if (event.type == Event::MouseButtonPressed && event.key.code == Mouse::Left)
+			{
+				if (remove_textbox) remove_textbox = false;
+				else remove_textbox = true;
+			}
+		}
+
+
+
+		//LOGIC HANDLING
+
+		velocity_player = 0;
+		if (move_up) velocity_player -= 5;
+		if (move_down) velocity_player += 5;
+
+		player.move(0, velocity_player);
+		if (player.getPosition().y < 25) player.setPosition(0, 25);
+		if (player.getPosition().y > 575) player.setPosition(0, 575);
+
+		if (shoot_bullet)
+		{
+			score -= 10 * level;
+			scorecard.setString("Score : " + to_string(score));
+			shoot.play();
+			shoot_bullet = false;
+			bullet_on_screen = true;
+			bullet.setPosition(50, player.getPosition().y);
+		}
+
+		if (bullet_on_screen) bullet.move(20, 0);
+		target.move(x_velocity_target, y_velocity_target);
+
+		if (target.getPosition().x <= 50)
+		{
+			playing_game_music.stop();
+			game_finished = true;
+			break;
+		}
+
+		if (bullet.getGlobalBounds().intersects(target.getGlobalBounds()))
+		{
+			blast_effect.setPosition(target.getPosition().x, target.getPosition().y);
+			score += 100 * level;
+			scorecard.setString("Score : " + to_string(score));
+			blast.play();
+			if (level == 10)
+			{
+				textbox.setString(bullet_hit[rand() % bullet_hit.size()]);
+				textbox.setPosition(blast_effect.getPosition().x, blast_effect.getPosition().y - 30);
+
+				playing_game_music.stop();
+				all_levels_clear = true;
+
+				window.clear();
+
+				window.draw(background);
+				window.draw(player);
+				if (!remove_textbox) window.draw(textbox);
+				window.draw(blast_effect);
+				window.draw(line);
+				window.draw(text);
+				window.draw(scorecard);
+
+				window.display();
+
+				this_thread::sleep_for(chrono::milliseconds(2000));
+				break;
+			}
+
+			bullet_on_screen = false;
+			bullet.setPosition(0, 0);
+			level++;
+			change_level.setString("LEVEL : " + to_string(level));
+
+			textbox.setString(bullet_hit[rand() % bullet_hit.size()]);
+			textbox.setPosition(blast_effect.getPosition().x, blast_effect.getPosition().y - 30);
+
+			window.clear();
+
+			window.draw(background);
+			window.draw(player);
+			window.draw(blast_effect);
+			if (!remove_textbox) window.draw(textbox);
+			window.draw(line);
+			window.draw(text);
+			window.draw(scorecard);
+
+			window.display();
+
+
+
+			this_thread::sleep_for(chrono::milliseconds(2000));
+
+			level_up_sound.play();
+			window.clear();
+			window.draw(change_level);
+			window.display();
+
+
+			this_thread::sleep_for(chrono::milliseconds(2000));
+			player.setPosition(0, 300);
+
+
+			target.setPosition(1200, rand() % 550);
+			string tex_asteroid = "Data/asteroid_texture" + to_string((rand() % 6) + 1) + ".png";
+			if (asteroid_texture.loadFromFile(tex_asteroid) == false) return -1;
+			target.setTexture(&asteroid_texture);
+			if (level <= 6)
+			{
+				if (y_velocity_target < 0) y_velocity_target -= 1.5;
+				else y_velocity_target += 1.5;
+				x_velocity_target -= 0.5;
+			}
+			else
+			{
+				x_velocity_target -= 1.5;
+				if (y_velocity_target < 0) y_velocity_target -= 0.5;
+				else y_velocity_target += 0.5;
+			}
+
+			text.setString("Level : " + to_string(level));
+		}
+
+		std::string str = textbox.getString();
+
+		if (bullet.getPosition().x < target.getPosition().x + 50) display_textbox = false;
+		if (bullet.getPosition().x < target.getPosition().x + 50 && bullet.getPosition().x > target.getPosition().x) textbox.setString("");
+		if (bullet.getPosition().x >= target.getPosition().x + 50)
+		{
+			textbox.setPosition(target.getPosition().x, target.getPosition().y - 30);
+			if (str == "") textbox.setString(bullet_missed[rand() % bullet_missed.size()]);
+			display_textbox = true;
+		}
+		if (remove_textbox) display_textbox = false;
+
+
+
+
+		if (upper_rebound)
+		{
+			if (target.getPosition().y <= random)
+			{
+				y_velocity_target *= -1;
+				rebound = true;
+			}
+		}
+		else
+		{
+			if (target.getPosition().y >= random)
+			{
+				y_velocity_target *= -1;
+				rebound = true;
+			}
+		}
+
+
+
+
+		if (bullet.getPosition().x > 1250) bullet_on_screen = false;
+
+
+
+
+
+
+
+		//RENDERING
+		window.clear();
+
+		window.draw(background);
+		window.draw(player);
+		if (bullet_on_screen) window.draw(bullet);
+		window.draw(target);
+		if (display_textbox) window.draw(textbox);
+		window.draw(line);
+		window.draw(text);
+		window.draw(scorecard);
+
+		window.display();
+
+	}
+
+	Time time = clock.getElapsedTime();
+	Int64 time_elapsed = time.asMicroseconds();
+
+
+	ifstream fin("Data/highscore.txt");
+	fin >> highest_level;
+	fin >> high_score;
+	fin >> high_score_time;
+	fin.close();
+
+	if (level >= highest_level)
+	{
+		if ((level > highest_level) || (level == highest_level && score > high_score) || (level == highest_level && score == high_score && time_elapsed <= high_score_time))
+		{
+			new_high_score = true;
+			ofstream fout("Data/highscore.txt");
+			fout << level << endl << score << endl << time_elapsed << endl;
+			fout.close();
+		}
+	}
+
+
+	if (game_finished)
+	{
+
+		game_over_music.play();
+		scorecard.setPosition(100, 500);
+		window.clear();
+		window.draw(game_over);
+		window.draw(scorecard);
+		if (new_high_score)window.draw(new_high_score_achieved);
+		window.display();
+
+		while (window.isOpen())
+		{
+			while (window.pollEvent(event))
+			{
+				if (event.type == Event::Closed) window.close();
+			}
+		}
+	}
+
+	if (all_levels_clear)
+	{
+
+
+		all_levels_cleared_music.play();
+		Text cleared_the_game;
+		cleared_the_game.setFont(font);
+		cleared_the_game.setPosition(100, 200);
+		cleared_the_game.setCharacterSize(50);
+		cleared_the_game.setString("Congratulations , You Finished The Game !!");
+
+		window.clear();
+
+
+		scorecard.setPosition(100, 500);
+		window.draw(scorecard);
+		window.draw(cleared_the_game);
+		if (new_high_score) window.draw(new_high_score_achieved);
+
+		window.display();
+
+
+		while (window.isOpen())
+		{
+			while (window.pollEvent(event))
+			{
+				if (event.type == Event::Closed) window.close();
+			}
+		}
+	}
+
+
+
+
+	return 0;
+}
